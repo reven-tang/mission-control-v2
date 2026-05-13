@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listTasks } from '@/lib/db';
-import { createTask } from '@/lib/kanban/hooks';
+import { createTask, initializeKanban } from '@/lib/kanban/hooks';
 import { CreateTaskSchema } from '@/lib/validation/schemas';
 
 // GET /api/stories - list all tasks
@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
 // POST /api/stories - create a new task
 export async function POST(request: NextRequest) {
   try {
+    // 确保 kanban hooks 已注册
+    initializeKanban();
+
     const body = await request.json();
     const parsed = CreateTaskSchema.safeParse(body);
     if (!parsed.success) {

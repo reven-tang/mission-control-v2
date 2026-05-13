@@ -100,7 +100,7 @@ async function callLLM(prompt: string): Promise<string> {
     const prov = resolveModelConfig(model);
     if (!prov) continue;
 
-    const modelId = model.split('/').pop() || model;
+    const modelId = model;
     if (!prov.apiKey) { console.warn(`[TaskDecomposer] ${prov.provider}: no apiKey, skipping`); continue; }
 
     try {

@@ -108,9 +108,13 @@ function resolveProvider(model: string): { baseUrl: string; apiKey: string; prov
 
 // ====== 写作质量排序（fallback 顺序）======
 const MODEL_FALLBACKS = [
-  'deepseek-ai/DeepSeek-V3.2',   // ModelScope 实际可用
-  'deepseek-ai/DeepSeek-V4-Flash', // ModelScope 实际可用
-  'deepseek-ai/DeepSeek-R1-0528', // ModelScope 推理模型
+  'deepseek/deepseek-v4-flash-free',  // g-zenmux 免费模型
+  'deepseek/deepseek-v4-pro-free',    // g-zenmux 免费模型  
+  'deepseek-ai/DeepSeek-V4-Flash',    // ModelScope 实际可用
+  'minimax/MiniMax-M2.7',              // ModelScope 支持
+  'deepseek-ai/DeepSeek-V3.2',        // ModelScope (配额可能耗尽)
+  'deepseek-ai/DeepSeek-R1-0528',     // ModelScope 推理模型
+  'ZhipuAI/GLM-5.1',                   // ModelScope 支持
 ];
 
 // ====== System Prompts ======

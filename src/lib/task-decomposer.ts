@@ -89,9 +89,13 @@ function resolveModelConfig(model: string): { baseUrl: string; apiKey: string; p
 
 // Fallback 模型列表（魔塔社区配置的模型）
 const FALLBACK_MODELS = [
-  'deepseek-ai/DeepSeek-V3.2',
-  'deepseek-ai/DeepSeek-V4-Flash',
-  'deepseek-ai/DeepSeek-R1-0528',
+  'deepseek/deepseek-v4-flash-free',  // g-zenmux 免费
+  'deepseek/deepseek-v4-pro-free',    // g-zenmux 免费
+  'deepseek-ai/DeepSeek-V4-Flash',    // ModelScope
+  'minimax/MiniMax-M2.7',              // ModelScope
+  'deepseek-ai/DeepSeek-V3.2',        // ModelScope
+  'deepseek-ai/DeepSeek-R1-0528',     // ModelScope
+  'ZhipuAI/GLM-5.1',                   // ModelScope
 ];
 
 // ====== 通过 OpenClaw 配置调用 LLM ======

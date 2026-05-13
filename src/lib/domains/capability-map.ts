@@ -11,7 +11,7 @@ export type CapabilityDomain = 'research' | 'script' | 'visual' | 'video' | 'pub
 
 // 能力域 → 任务标签的映射表
 export const CAPABILITY_DOMAIN_MAP: Record<CapabilityDomain, string[]> = {
-  research:   ['竞品分析', '用户调研', '数据收集', '趋势分析', 'market-research', 'user-research'],
+  research:   ['竞品分析', '用户调研', '数据收集', '趋势分析', '市场分析', 'market-research', 'user-research'],
   script:     ['文章写作', '文案优化', '脚本生成', '内容策划', 'copywriting', 'content-plan'],
   visual:     ['封面设计', 'Banner制作', '信息图表', '配图方案', 'graphic-design', 'illustration'],
   video:      ['视频剪辑', '动效制作', '字幕生成', '视频渲染', 'video-edit', 'motion-graphic'],

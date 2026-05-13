@@ -36,7 +36,7 @@ function buildProviderMap(): Map<string, { baseUrl: string; apiKey: string; prov
     let apiKey = p.apiKey || '';
     if (apiKey.startsWith('${') && apiKey.endsWith('}')) {
       const envVar = apiKey.slice(2, -1);
-      apiKey = envCache[envVar] || (envCache[envVar] = process.env[envVar] || '');
+      apiKey = envCache[envVar] || (envCache[envVar] = getEnv(envVar));
     }
 
     const baseUrl = (p.baseUrl || 'https://api-inference.modelscope.cn/v1').replace(/\/$/, '');

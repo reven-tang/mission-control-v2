@@ -145,7 +145,7 @@ const HUMANIZER_PROMPT = `你是文章润色专家。对下面这篇文章做 hu
 async function callLLM(model: string, systemPrompt: string, userPrompt: string, maxRetries = 3): Promise<string> {
   const prov = resolveProvider(model);
   if (!prov) throw new Error(`No provider found for model: ${model}`);
-  const modelId = model.split('/').pop() || model;
+  const modelId = model;
   const url = `${prov.baseUrl}/chat/completions`;
 
   if (!prov.apiKey) console.warn(`[LLM] ${prov.provider}: apiKey not set`);

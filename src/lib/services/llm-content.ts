@@ -108,10 +108,9 @@ function resolveProvider(model: string): { baseUrl: string; apiKey: string; prov
 
 // ====== 写作质量排序（fallback 顺序）======
 const MODEL_FALLBACKS = [
-  'moonshotai/Kimi-K2.6',       // 魔塔社区主模型
-  'MiniMax/MiniMax-M2.7',        // 魔塔社区备选
-  'ZhipuAI/GLM-5.1',             // 魔塔社区备选
-  'deepseek-ai/DeepSeek-V4-Pro', // 魔塔社区备选
+  'deepseek-ai/DeepSeek-V3.2',   // ModelScope 实际可用
+  'deepseek-ai/DeepSeek-V4-Flash', // ModelScope 实际可用
+  'deepseek-ai/DeepSeek-R1-0528', // ModelScope 推理模型
 ];
 
 // ====== System Prompts ======

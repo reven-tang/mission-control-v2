@@ -89,10 +89,9 @@ function resolveModelConfig(model: string): { baseUrl: string; apiKey: string; p
 
 // Fallback 模型列表（魔塔社区配置的模型）
 const FALLBACK_MODELS = [
-  'moonshotai/Kimi-K2.6',
-  'MiniMax/MiniMax-M2.7',
-  'ZhipuAI/GLM-5.1',
-  'deepseek-ai/DeepSeek-V4-Pro',
+  'deepseek-ai/DeepSeek-V3.2',
+  'deepseek-ai/DeepSeek-V4-Flash',
+  'deepseek-ai/DeepSeek-R1-0528',
 ];
 
 // ====== 通过 OpenClaw 配置调用 LLM ======

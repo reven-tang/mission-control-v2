@@ -7,7 +7,7 @@ import { decomposeComplexTask, needsDecomposition, SubTask } from '@/lib/task-de
 import { routeTask } from '@/lib/services/agent-router';
 import { initializeDefaultAgents } from '@/lib/services/agent-registry';
 import { initializeSelfHealing, healError, executeHealing } from '@/lib/services/self-healing';
-import { createTask as dbCreateTask } from '@/lib/db';
+import { createTask as dbCreateTask, updateTask as dbUpdateTask } from '@/lib/db';
 import type { TaskPriority, TaskSource } from '@/lib/types';
 
 // 看板任务接口
@@ -44,25 +44,6 @@ async function executeHooks(type: HookType, context: any): Promise<any> {
   return result;
 }
 
-// 持久化到数据库
-async function persistTask(task: KanbanTask): Promise<KanbanTask> {
-  try {
-    const saved = dbCreateTask({
-      title: task.title,
-      description: task.description,
-      priority: task.priority,
-      source: task.source || 'manual',
-      tags: task.tags,
-      goal_id: task.goal_id,
-    });
-    console.log('[Kanban] Task persisted to DB:', saved.id);
-    return saved as KanbanTask;
-  } catch (e) {
-    console.error('[Kanban] Failed to persist task:', e);
-    return task;
-  }
-}
-
 // 初始化看板系统
 export function initializeKanban(): void {
   console.log('[Kanban] Initializing hooks...');
@@ -90,7 +71,7 @@ export function initializeKanban(): void {
     return task;
   });
 
-  // afterCreate: 自动路由到智能体
+  // afterCreate: 自动路由到智能体 + 持久化扩展字段
   registerHook('afterCreate', async (task: KanbanTask) => {
     if (task.tags.includes('auto-assign')) {
       console.log(`[Kanban] Auto-assigning: ${task.title}`);
@@ -116,6 +97,19 @@ export function initializeKanban(): void {
         task.tags.push('route-error');
       }
     }
+
+    // 持久化扩展字段（children, assignedAgentId, status 等）
+    try {
+      await dbUpdateTask(task.id, {
+        status: task.status,
+        tags: task.tags,
+        assigned_agent: task.assignedAgentId,
+      } as any);
+      console.log('[Kanban] Extended fields saved:', task.id);
+    } catch (e) {
+      console.warn('[Kanban] Failed to save extended fields:', (e as Error).message);
+    }
+
     return task;
   });
 
@@ -144,7 +138,7 @@ export function initializeKanban(): void {
   console.log('[Kanban] Hooks registered successfully');
 }
 
-// 创建任务（带钩子）
+// 创建任务（带钩子 + 持久化）
 export async function createTask(taskData: Omit<KanbanTask, 'id' | 'status'>): Promise<KanbanTask> {
   const task: KanbanTask = {
     ...taskData,
@@ -155,11 +149,21 @@ export async function createTask(taskData: Omit<KanbanTask, 'id' | 'status'>): P
   // beforeCreate 钩子（含任务分解）
   const processedTask = await executeHooks('beforeCreate', task);
 
-  // 持久化到数据库
-  const savedTask = await persistTask(processedTask);
+  // 持久化基础字段到数据库
+  const savedTask = dbCreateTask({
+    title: processedTask.title,
+    description: processedTask.description,
+    priority: processedTask.priority,
+    source: processedTask.source || 'manual',
+    tags: processedTask.tags,
+    goal_id: processedTask.goal_id,
+  }) as KanbanTask;
 
-  // afterCreate 钩子（含智能体路由）
-  const finalTask = await executeHooks('afterCreate', savedTask);
+  // afterCreate 钩子（含智能体路由 + 持久化扩展字段）
+  const finalTask = await executeHooks('afterCreate', {
+    ...savedTask,
+    ...processedTask,
+  });
 
   return finalTask;
 }
@@ -167,9 +171,16 @@ export async function createTask(taskData: Omit<KanbanTask, 'id' | 'status'>): P
 // 更新任务状态
 export async function updateTask(taskId: string, updates: Partial<KanbanTask>): Promise<KanbanTask | null> {
   await executeHooks('beforeUpdate', { taskId, updates });
-  console.log('[Kanban] Task updated:', taskId, updates);
-  const result = await executeHooks('afterUpdate', { taskId, updates });
-  return result.task || null;
+
+  try {
+    const updated = dbUpdateTask(taskId, updates as any);
+    console.log('[Kanban] Task updated:', taskId);
+    const result = await executeHooks('afterUpdate', { taskId, updates, task: updated });
+    return result.task || null;
+  } catch (e) {
+    console.error('[Kanban] Update failed:', e);
+    return null;
+  }
 }
 
 // 处理任务错误

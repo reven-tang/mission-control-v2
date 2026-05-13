@@ -1,14 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Skip static generation for dynamic API routes
+  output: 'standalone',
+  // Configure dynamic routes
+  experimental: {
+    // Disable static generation for specific routes
+    workerThreads: false,
+    cpus: 1
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // sql.js needs wasm file accessible on server
       config.externals = config.externals || [];
-      // Don't bundle sql.js wasm on server side
     }
     return config;
   },
 }
-
-module.exports = nextConfig

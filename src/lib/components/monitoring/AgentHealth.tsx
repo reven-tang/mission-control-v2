@@ -52,7 +52,7 @@ export function AgentHealthPanel() {
             <div>
               <span className={`w-2 h-2 rounded-full inline-block mr-2 ${STATUS_COLORS[agent.status]}`} />
               <span className="font-medium">{agent.agentId}</span>
-              <span className="text-xs text-gray-400 ml-2">[{agent.domains.join(', ')}]</span>
+              <span className="text-xs text-gray-400 ml-2">[{agent.domains?.join(', ') || 'N/A'}]</span>
             </div>
             <div className="flex gap-3 text-sm">
               <span className={agent.cpu > 70 ? 'text-red-500' : 'text-gray-500'}>

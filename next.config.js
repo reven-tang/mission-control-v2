@@ -13,6 +13,15 @@ const nextConfig = {
     if (isServer) {
       config.externals = config.externals || [];
     }
+    // 排除 Tabby.app 等无关目录，避免 Watchpack 报错
+    config.watchOptions = config.watchOptions || {};
+    config.watchOptions.ignored = [
+      /node_modules/,
+      /\.next/,
+      /Applications\/Tabby\.app\/.*/,
+      /\.git\/.*/,
+      /Library\/.*/
+    ];
     return config;
   },
 }

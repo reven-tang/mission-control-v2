@@ -13,6 +13,8 @@ interface AgentHealth {
   lastSeen: number;
   tasksCompleted: number;
   tasksFailed: number;
+  domains?: string[]; // Optional: from agent registry
+  skills?: string[];
 }
 
 interface UseAgentHealthOptions {

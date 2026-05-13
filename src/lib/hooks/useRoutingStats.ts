@@ -1,11 +1,9 @@
 /**
  * useRoutingStats Hook
- * 路由统计数据实时刷新（SWR）
+ * 路由统计数据实时刷新（5秒轮询，零依赖）
  */
 
-import useSWR from 'swr';
-
-const fetcher = (url: string) => fetch(url).then(r => r.json());
+import { useState, useEffect, useCallback } from 'react';
 
 interface RoutingStats {
   totalRouted: number;
@@ -24,30 +22,40 @@ interface RoutingStats {
   }>;
 }
 
-export function useRoutingStats(refreshInterval: number = 5000) {
-  const { data, error, isLoading, mutate } = useSWR<RoutingStats>(
-    '/api/monitoring/routing/stats',
-    fetcher,
-    {
-      refreshInterval,
-      revalidateOnFocus: true,
-      dedupingInterval: 2000,
-      fallbackData: {
-        totalRouted: 0,
-        successCount: 0,
-        failureCount: 0,
-        successRate: 0,
-        avgRoutingTime: 0,
-        byDomain: {},
-        recentRoutes: []
-      }
-    }
-  );
+const DEFAULT_FALLBACK: RoutingStats = {
+  totalRouted: 0,
+  successCount: 0,
+  failureCount: 0,
+  successRate: 0,
+  avgRoutingTime: 0,
+  byDomain: {},
+  recentRoutes: []
+};
 
-  return {
-    stats: data,
-    isLoading,
-    isError: !!error,
-    refresh: () => mutate()
-  };
+export function useRoutingStats(refreshInterval: number = 5000) {
+  const [stats, setStats] = useState<RoutingStats>(DEFAULT_FALLBACK);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/monitoring/routing/stats', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      setStats(json.data || DEFAULT_FALLBACK);
+      setIsError(false);
+    } catch (e) {
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats(); // 立即执行一次
+    const timer = setInterval(fetchStats, refreshInterval);
+    return () => clearInterval(timer);
+  }, [fetchStats, refreshInterval]);
+
+  return { stats, isLoading, isError, refresh: fetchStats };
 }

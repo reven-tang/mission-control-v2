@@ -4,9 +4,9 @@
  */
 
 import { decomposeComplexTask, needsDecomposition, SubTask } from '@/lib/task-decomposer';
-import { routeTask } from './agent-router';
-import { initializeDefaultAgents } from './agent-registry';
-import { initializeSelfHealing, healError, executeHealing } from './self-healing';
+import { routeTask } from '@/lib/services/agent-router';
+import { initializeDefaultAgents } from '@/lib/services/agent-registry';
+import { initializeSelfHealing, healError, executeHealing } from '@/lib/services/self-healing';
 import { createTask as dbCreateTask } from '@/lib/db';
 import type { TaskPriority, TaskSource } from '@/lib/types';
 
@@ -183,6 +183,6 @@ export async function handleTaskError(task: KanbanTask, error: Error, retryCount
 
 // 导出
 export { decomposeComplexTask, needsDecomposition } from '@/lib/task-decomposer';
-export { routeTask } from './agent-router';
-export { initializeDefaultAgents, getAgent, listOnlineAgents } from './agent-registry';
-export { healError, classifyError } from './self-healing';
+export { routeTask } from '@/lib/services/agent-router';
+export { initializeDefaultAgents, getAgent, listOnlineAgents } from '@/lib/services/agent-registry';
+export { healError, classifyError } from '@/lib/services/self-healing';

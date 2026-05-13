@@ -4,11 +4,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import { listOnlineAgents, getAgent } from '@/lib/services/agent-registry';
+import { listOnlineAgents, getAgent, initializeDefaultAgents } from '@/lib/services/agent-registry';
 import { getRoutingStats } from '@/lib/services/agent-router';
 
 // GET /api/monitoring/agents - 智能体健康状态
 export async function GET() {
+  initializeDefaultAgents();
   try {
     const agents = listOnlineAgents();
     const healthData = agents.map(agent => ({

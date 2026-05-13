@@ -107,12 +107,30 @@ function resolveProvider(model: string): { baseUrl: string; apiKey: string; prov
 }
 
 // ====== 写作质量排序（fallback 顺序）======
-// Fallback 顺序：R1-0528 (推理模型，配额较高) → V4-Flash → GLM-5.1
+// Fallback 顺序：多厂商、多模型、最大化可用性
 const MODEL_FALLBACKS = [
-  'deepseek-ai/DeepSeek-R1-0528',     // 推理模型，配额较高
-  'deepseek-ai/DeepSeek-V4-Flash',    // ModelScope 实际可用
-  'ZhipuAI/GLM-5.1',                   // ModelScope 支持
-  'deepseek-ai/DeepSeek-V4-Pro',      // ModelScope Pro 版
+  // DeepSeek 系列
+  'deepseek-ai/DeepSeek-V4-Flash',    // Flash 版本，响应快
+  'deepseek-ai/DeepSeek-V4-Pro',      // Pro 版本，质量高
+  'deepseek-ai/DeepSeek-R1-0528',     // 推理模型
+  
+  // Kimi 系列（月之暗面）
+  'moonshotai/Kimi-K2.6',             // Kimi 最新模型
+  'moonshotai/Kimi-K2.5',             // Kimi 次新模型
+  
+  // MiniMax 系列
+  'MiniMax/MiniMax-M2.7',             // MiniMax M2.7
+  'MiniMax/MiniMax-M2.5',             // MiniMax M2.5
+  
+  // GLM 系列（智谱 AI）
+  'ZhipuAI/GLM-5.1',                   // GLM 5.1
+  'ZhipuAI/GLM-5',                     // GLM 5
+  
+  // StepFun 系列
+  'stepfun-ai/Step-3.5-Flash',        // 阶跃星辰 Flash
+  
+  // Qwen 系列（通义千问）
+  'Qwen/Qwen3.5-397B-A17B',           // Qwen 最大模型
 ];
 
 // ====== System Prompts ======

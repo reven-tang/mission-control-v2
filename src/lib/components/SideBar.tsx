@@ -15,6 +15,7 @@ const NAV = [
   { href: '/agents',      label: 'Agents',   key: 'A', section: 'Monitor' },
   { href: '/cron',        label: 'Cron',     key: 'C', section: 'Monitor' },
   { href: '/healthcheck', label: 'Health',   key: 'H', section: 'Monitor' },
+  { href: '/monitoring',  label: 'Monitor',  key: 'M', section: 'Monitor' },
   { href: '/skills',      label: 'Skills',   key: 'S', section: 'System' },
   { href: '/system',      label: 'System',   key: 'Y', section: 'System' },
   { href: '/brief',       label: 'Brief',    key: 'R', section: 'System' },

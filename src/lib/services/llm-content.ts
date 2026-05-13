@@ -107,14 +107,12 @@ function resolveProvider(model: string): { baseUrl: string; apiKey: string; prov
 }
 
 // ====== 写作质量排序（fallback 顺序）======
+// Fallback 顺序：R1-0528 (推理模型，配额较高) → V4-Flash → GLM-5.1
 const MODEL_FALLBACKS = [
-  'deepseek/deepseek-v4-flash-free',  // g-zenmux 免费模型
-  'deepseek/deepseek-v4-pro-free',    // g-zenmux 免费模型  
+  'deepseek-ai/DeepSeek-R1-0528',     // 推理模型，配额较高
   'deepseek-ai/DeepSeek-V4-Flash',    // ModelScope 实际可用
-  'minimax/MiniMax-M2.7',              // ModelScope 支持
-  'deepseek-ai/DeepSeek-V3.2',        // ModelScope (配额可能耗尽)
-  'deepseek-ai/DeepSeek-R1-0528',     // ModelScope 推理模型
   'ZhipuAI/GLM-5.1',                   // ModelScope 支持
+  'deepseek-ai/DeepSeek-V4-Pro',      // ModelScope Pro 版
 ];
 
 // ====== System Prompts ======

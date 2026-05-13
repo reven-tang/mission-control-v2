@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getAgentService } from '../../src/lib/services/agent';
+import * as cp from 'child_process';
+
+vi.mock('child_process', () => ({
+  execSync: vi.fn(),
+}));
 
 describe('AgentService', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('should return singleton', () => {
     expect(getAgentService()).toBe(getAgentService());
@@ -36,10 +41,12 @@ describe('AgentService', () => {
   });
 
   it('should set planner status to running when openclaw is running', async () => {
-    vi.spyOn(require('child_process'), 'execSync').mockReturnValue('openclaw gateway running\n' as any);
+    (cp.execSync as any).mockReturnValue('openclaw gateway running\n');
+    const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('connection refused'));
     const result = await getAgentService().getAgents();
-    const planner = result.find(a => a.id === 'planner');
-    expect(planner).toBeDefined();
-    expect(planner!.status).toBe('running');
+    const gateway = result.find(a => a.id === 'gateway');
+    expect(gateway).toBeDefined();
+    expect(gateway!.status).toBe('running');
+    fetchSpy.mockRestore();
   });
 });

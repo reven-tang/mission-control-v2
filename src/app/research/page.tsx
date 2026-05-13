@@ -134,7 +134,12 @@ export default function ResearchPage() {
 
   async function deletePain(id: string) {
     const res = await fetch(`/api/research?id=${id}`, { method: 'DELETE' });
-    if (res.ok) setPains(p => p.filter(x => x.id !== id));
+    if (res.ok) {
+      setPains(p => p.filter(x => x.id !== id));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert('❌ 删除失败: ' + (data.error || res.statusText || 'unknown'));
+    }
   }
 
   if (loading) return <div className="page"><div className="loading">Loading research data…</div></div>;

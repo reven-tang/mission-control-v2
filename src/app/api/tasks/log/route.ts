@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Filter incomplete
     if (incompleteOnly) {
-      tasks = tasks.filter(t => t.status !== 'done' && t.status !== 'archived');
+      tasks = tasks.filter(t => t.status !== 'done');
     }
 
     // Sort
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     const enriched: (Task & { rank: number; completed: boolean })[] = tasks.map((t, i) => ({
       ...t,
       rank: i + 1,
-      completed: t.status === 'done' || t.status === 'archived',
+      completed: t.status === 'done',
     }));
 
     // Summary stats

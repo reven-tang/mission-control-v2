@@ -5,15 +5,7 @@ import fs from 'fs';
 import { join } from 'path';
 import { getAccessToken } from './wechat';
 
-function loadEnv(): Record<string, string> {
-  const envPath = join(process.cwd(), '.env.local');
-  if (fs.existsSync(envPath)) {
-    return fs.readFileSync(envPath, 'utf-8')
-      .split('\n').filter(l => l && !l.startsWith('#'))
-      .reduce((acc, line) => { const [k, ...v] = line.split('='); acc[k.trim()] = v.join('=').trim(); return acc; }, {} as Record<string, string>);
-  }
-  return {};
-}
+import { loadEnv } from '@/lib/utils/env';
 
 const _env = loadEnv();
 
@@ -58,12 +50,12 @@ export async function uploadImageToWechat(imageBuffer: Buffer, filename: string 
 
   // 构造 multipart form data
   const boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW';
-  const header = (
+  const header = Buffer.from(
     `--${boundary}\r\n` +
     `Content-Disposition: form-data; name="media"; filename="${filename}"\r\n` +
     `Content-Type: image/jpeg\r\n\r\n`
-  ).encode();
-  const footer = `\r\n--${boundary}--\r\n`.encode();
+  );
+  const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
   const body = Buffer.concat([header, imageBuffer, footer]);
 
   console.log(`[Image] Uploading to WeChat: ${imageBuffer.length} bytes`);

@@ -1,5 +1,5 @@
-import { execSync } from 'child_process';
 import type { HealthcheckResult } from '@/lib/types';
+import { spawnSync } from 'child_process';
 
 let instance: HealthService | null = null;
 
@@ -8,9 +8,15 @@ export function getHealthService(): HealthService {
   return instance;
 }
 
+const BRAIN_HEALTHCHECK = '/Users/jhwu/.openclaw/workspace/brain/bin/brain-healthcheck.sh';
+
+function runScript(script: string): { stdout: string; status: number } {
+  const res = spawnSync('/bin/bash', [script], { encoding: 'utf-8', timeout: 15000 });
+  return { stdout: res.stdout || '', status: res.status ?? 1 };
+}
+
 export class HealthService {
   async runHealthcheck(): Promise<HealthcheckResult> {
-    const script = '/Users/jhwu/.openclaw/workspace/brain/bin/brain-healthcheck.sh';
     let compile = { passed: false, detail: 'not run' as string };
     let sync = { passed: false, detail: 'not run' as string };
     let search = { passed: false, detail: 'not run' as string };
@@ -19,10 +25,9 @@ export class HealthService {
     let issues = 0, fixed = 0;
 
     try {
-      const out = execSync(`/bin/bash ${script}`, { encoding: 'utf-8', timeout: 15000 } as any);
-      const text = (out as string) || '';
-      const passed = !text.includes('FAIL');
-      compile = { passed: passed || text.includes('[OK]'), detail: text.slice(0, 200) };
+      const { stdout } = runScript(BRAIN_HEALTHCHECK);
+      const passed = !stdout.includes('FAIL');
+      compile = { passed: passed || stdout.includes('[OK]'), detail: stdout.slice(0, 200) };
       sync = { passed, detail: 'brain sync check' };
       search = { passed: true, detail: 'ok' };
       lint = { passed: true, detail: 'ok' };

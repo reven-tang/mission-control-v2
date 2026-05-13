@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 
 const OPENCLAW_PATH = '/Users/jhwu/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin';
+
+/** Validate cron job id: only allow UUID / alphanumeric / dashes */
+function isValidJobId(id: string): boolean {
+  return /^[a-zA-Z0-9_-]{1,100}$/.test(id);
+}
+
+/** Safe run of openclaw CLI via spawnSync (no shell injection) */
+function runOpenClaw(args: string[]): { stdout: string; stderr: string; status: number } {
+  const res = spawnSync('/Users/jhwu/.local/bin/openclaw', args, {
+    encoding: 'utf-8',
+    timeout: 120000,
+    env: { ...process.env, PATH: OPENCLAW_PATH },
+    shell: false,
+  });
+  return { stdout: res.stdout || '', stderr: res.stderr || '', status: res.status ?? 1 };
+}
 
 // GET /api/cron — return real cron job status via CLI
 export async function GET() {
@@ -36,15 +52,17 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('id');
-    if (!jobId) {
-      return NextResponse.json({ success: false, error: 'id required' }, { status: 400 });
+    if (!jobId || !isValidJobId(jobId)) {
+      return NextResponse.json({ success: false, error: 'Invalid id' }, { status: 400 });
     }
-    
-    const result = execSync(`/Users/jhwu/.local/bin/openclaw cron delete ${jobId}`, { 
-      encoding: 'utf-8', timeout: 10000 
-    });
-    const parsed = JSON.parse(result);
-    
+
+    const { stdout, status } = runOpenClaw(['cron', 'delete', jobId]);
+    if (status !== 0) {
+      return NextResponse.json({ success: false, error: `Delete failed (exit ${status}): ${stdout.slice(0, 200)}` }, { status: 500 });
+    }
+
+    let parsed: { ok: boolean } = { ok: false };
+    try { parsed = JSON.parse(stdout); } catch {}
     return NextResponse.json({ success: parsed.ok, data: parsed, timestamp: Date.now() });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message, timestamp: Date.now() }, { status: 500 });
@@ -56,15 +74,16 @@ export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('id');
-    if (!jobId) return NextResponse.json({ success: false, error: 'Missing id' }, { status: 400 });
+    if (!jobId || !isValidJobId(jobId)) {
+      return NextResponse.json({ success: false, error: 'Invalid id' }, { status: 400 });
+    }
 
-    const out = execSync(`openclaw cron run ${jobId}`, { 
-      encoding: 'utf-8', 
-      timeout: 120000,
-      env: { ...process.env, PATH: OPENCLAW_PATH },
-    });
-    
-    return NextResponse.json({ success: true, content: out, timestamp: Date.now() });
+    const { stdout, status } = runOpenClaw(['cron', 'run', jobId]);
+    if (status !== 0) {
+      return NextResponse.json({ success: false, error: `Run failed (exit ${status}): ${stdout.slice(0, 200)}` }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, content: stdout, timestamp: Date.now() });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message, timestamp: Date.now() }, { status: 500 });
   }

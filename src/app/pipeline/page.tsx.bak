@@ -6,7 +6,6 @@ const STAGES = [
   { id: 'research', label: 'Research', desc: 'Quill Agent', color: '#3b82f6', icon: '🔍' },
   { id: 'script', label: 'Script', desc: 'Content generation', color: '#8b5cf6', icon: '📝' },
   { id: 'visual', label: 'Visual', desc: 'Pixel Agent', color: '#f59e0b', icon: '🎨' },
-  { id: 'video', label: 'Video', desc: 'HyperFrames', color: '#7c3aed', icon: '🎬' },
   { id: 'publish', label: 'Publish', desc: 'Multi-platform', color: '#22c55e', icon: '🚀' },
 ];
 
@@ -325,20 +324,10 @@ export default function PipelinePage() {
                           {STAGES.find(s => s.id === piece.stage)?.icon} {STAGES.find(s => s.id === piece.stage)?.label}
                         </div>
                         <span className={`badge ${piece.status === 'published' ? 'badge-green' : 'badge-gray'}`}>{piece.status}</span>
-                        {piece.stage === 'video' && (
-                          <button onClick={(e) => { e.stopPropagation(); regenerateVideo(selectedRun!.id); }} disabled={regeneratingVideoId === selectedRun?.id} style={{ padding: '0.15rem 0.5rem', fontSize: '0.6rem', background: '#7c3aed', color: '#ddd6fe', border: 'none', borderRadius: 'var(--radius-sm)', cursor: regeneratingVideoId === selectedRun?.id ? 'not-allowed' : 'pointer', opacity: regeneratingVideoId === selectedRun?.id ? 0.6 : 1 }} title="重新生成视频">
-                            {regeneratingVideoId === selectedRun?.id ? '⏳' : '🔄 重生成'}
-                          </button>
-                        )}
                       </div>
                       {piece.content && (
                         <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--muted)', maxHeight: '120px', overflow: 'auto', padding: '0.5rem', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
                           {piece.content}
-                        </div>
-                      )}
-                      {piece.stage === 'video' && piece.assets?.video_url && (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <video src={piece.assets.video_url} controls style={{ width: '100%', maxWidth: '320px', borderRadius: 'var(--radius-sm)', display: 'block' }} />
                         </div>
                       )}
                     </div>

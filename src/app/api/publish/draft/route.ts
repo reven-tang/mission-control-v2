@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccessToken, publishDraft } from '@/lib/services/wechat';
+import { PublishDraftSchema } from '@/lib/validation/schemas';
 import { getPipelineRun } from '@/lib/db';
 import { listContentPieces } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { pipeline_id, title, content, digest, thumb_url } = body;
+    const parsed = PublishDraftSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error.errors[0]?.message || 'Invalid input' }, { status: 400 });
+    }
+    const { pipeline_id, title, content, digest, thumb_url } = parsed.data;
 
     if (!content && !pipeline_id) {
       return NextResponse.json({ success: false, error: 'content or pipeline_id required' }, { status: 400 });
@@ -15,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (pipeline_id) {
       const run = getPipelineRun(pipeline_id);
       if (!run) return NextResponse.json({ success: false, error: 'Pipeline not found' }, { status: 404 });
-      const pieces = listContentPieces(pipeline_id);
+      const pieces = listContentPieces({ pipeline_id });
       const publishPiece = pieces.find(p => p.stage === 'publish') || pieces[pieces.length - 1];
       if (!publishPiece) return NextResponse.json({ success: false, error: 'No content to publish' }, { status: 400 });
 
@@ -26,6 +31,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (!content) return NextResponse.json({ success: false, error: 'content required when no pipeline_id' }, { status: 400 });
     return doPublish({ title: title || 'Untitled', content, digest });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -189,7 +189,7 @@ export interface ApiResponse<T> {
 
 // ─── Pipeline / Content Factory Types ───
 
-export type PipelineStage = 'research' | 'script' | 'visual' | 'publish';
+export type PipelineStage = 'research' | 'script' | 'visual' | 'video' | 'publish';
 export type PipelineStatus = 'idle' | 'running' | 'paused' | 'completed' | 'failed';
 
 export interface PipelineRun {
@@ -220,6 +220,11 @@ export interface ContentPiece {
     images?: string[];
     thumbnails?: string[];
     banners?: string[];
+    thumb_media_id?: string;
+    wechat_media_id?: string;
+    video_path?: string;
+    video_html?: string;
+    error?: string;
   };
   status: string;
   created_at: number;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listTasks, createTask, deleteTask } from '@/lib/db';
+import { listTasks, createTask } from '@/lib/db';
+import { CreateTaskSchema } from '@/lib/validation/schemas';
 
 // GET /api/stories - list all tasks
 export async function GET(request: NextRequest) {
@@ -18,23 +19,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const task = createTask(body);
+    const parsed = CreateTaskSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error.errors[0]?.message || 'Invalid input', timestamp: Date.now() }, { status: 400 });
+    }
+    const task = createTask({ ...parsed.data, priority: (parsed.data.priority ?? 0) as 0|1|2|3|4 });
     return NextResponse.json({ success: true, data: task, timestamp: Date.now() }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message, timestamp: Date.now() }, { status: 400 });
   }
 }
 
-// DELETE /api/stories?id=xxx - delete a task by query param
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ success: false, error: 'Missing id' }, { status: 400 });
-    const ok = deleteTask(id);
-    if (!ok) return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
-    return NextResponse.json({ success: true, timestamp: Date.now() });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message, timestamp: Date.now() }, { status: 500 });
-  }
-}
+// NOTE: DELETE /api/stories removed — use DELETE /api/stories/[id] instead
+// (duplicate path caused routing ambiguity)

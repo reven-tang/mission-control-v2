@@ -1,10 +1,13 @@
-// JSON file store - pure sync
+// JSON file store with basic concurrency control
 import { join } from 'path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import type { Task, CreateTaskInput, PainPoint, Opportunity, ContentPiece, PipelineRun } from '@/lib/types';
 
 const DATA_DIR = join(process.cwd(), 'data');
 const STORE_PATH = join(DATA_DIR, 'mc-store.json');
+
+// Simple in-memory lock for sequential access (Node.js single-threaded)
+let writeLock: Promise<void> = Promise.resolve();
 
 interface StoreSchema {
   pipeline_runs: PipelineRun[];
@@ -25,24 +28,58 @@ function load(): StoreSchema {
   if (store) return store;
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
   if (existsSync(STORE_PATH)) {
-    store = JSON.parse(readFileSync(STORE_PATH, 'utf-8'));
+    const raw: StoreSchema = JSON.parse(readFileSync(STORE_PATH, 'utf-8'));
     // Ensure new fields exist in existing stores
-    if (!store.tasks) store.tasks = [];
-    if (!store.pipeline_runs) store.pipeline_runs = [];
-    if (!store.content_pieces) store.content_pieces = [];
+    raw.tasks = raw.tasks || [];
+    raw.pipeline_runs = raw.pipeline_runs || [];
+    raw.content_pieces = raw.content_pieces || [];
+    store = raw;
   } else {
     store = { tasks: [], pipeline_runs: [], content_pieces: [], brief_config: { id: 1, modules: ['news','tasks','health','insights'], delivery_time: '09:30', delivery_channel: 'feishu', enabled: true }, brief_history: [], healthcheck_history: [], agent_activity: [], token_usage: [], pain_points: [], opportunities: [] };
     save();
   }
-  return store!;
+  return store;
 }
 
+// Synchronized save to prevent concurrent writes
+async function saveAsync(): Promise<void> {
+  if (!store) return;
+  const prev = writeLock;
+  let resolveLock: () => void;
+  writeLock = new Promise(resolve => { resolveLock = resolve; });
+  await prev;
+  try {
+    writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), 'utf-8');
+  } finally {
+    resolveLock!();
+  }
+}
+
+// Legacy sync version for backward compatibility
 function save(): void {
   if (!store) return;
   writeFileSync(STORE_PATH, JSON.stringify(store, null, 2), 'utf-8');
 }
 
 export function getStore(): StoreSchema { return load(); }
+
+export async function createTaskAsync(input: CreateTaskInput): Promise<Task> {
+  const prev = writeLock;
+  let resolveLock: () => void;
+  writeLock = new Promise(resolve => { resolveLock = resolve; });
+  await prev;
+  try {
+    const s = load();
+    const now = Date.now();
+    const id = `task_${now}_${Math.random().toString(36).slice(2, 8)}`;
+    const task: Task = { id, title: input.title, description: input.description || '', status: 'backlog', priority: input.priority || 0, source: input.source || 'manual', goal_id: input.goal_id, created_at: now, updated_at: now, tags: input.tags || [] };
+    s.tasks.push(task);
+    save();
+    return task;
+  } finally {
+    resolveLock!();
+  }
+}
 
 export function createTask(input: CreateTaskInput): Task {
   const s = load();
@@ -64,6 +101,29 @@ export function deleteTask(id: string): boolean {
 
 export function getTask(id: string): Task | null {
   return load().tasks.find(t => t.id === id) || null;
+}
+
+export async function updateTaskAsync(id: string, changes: Partial<Task>): Promise<Task> {
+  const prev = writeLock;
+  let resolveLock: () => void;
+  writeLock = new Promise(resolve => { resolveLock = resolve; });
+  await prev;
+  try {
+    const s = load();
+    const idx = s.tasks.findIndex(t => t.id === id);
+    if (idx === -1) throw new Error(`Task not found: ${id}`);
+    const t = s.tasks[idx];
+    for (const [k, v] of Object.entries(changes)) {
+      if (k === 'id' || k === 'created_at') continue;
+      (t as any)[k] = v;
+      if (k === 'status' && v === 'done') t.completed_at = Date.now();
+    }
+    t.updated_at = Date.now();
+    save();
+    return t;
+  } finally {
+    resolveLock!();
+  }
 }
 
 export function updateTask(id: string, changes: Partial<Task>): Task {
@@ -180,6 +240,23 @@ export function listPipelineRuns(): PipelineRun[] {
 
 export function getPipelineRun(id: string): PipelineRun | null {
   return (load().pipeline_runs || []).find(p => p.id === id) || null;
+}
+
+export async function updatePipelineRunAsync(id: string, changes: Partial<PipelineRun>): Promise<PipelineRun | null> {
+  const prev = writeLock;
+  let resolveLock: () => void;
+  writeLock = new Promise(resolve => { resolveLock = resolve; });
+  await prev;
+  try {
+    const s = load();
+    const idx = s.pipeline_runs.findIndex(p => p.id === id);
+    if (idx === -1) return null;
+    s.pipeline_runs[idx] = { ...s.pipeline_runs[idx], ...changes, updated_at: Date.now() };
+    save();
+    return s.pipeline_runs[idx];
+  } finally {
+    resolveLock!();
+  }
 }
 
 export function updatePipelineRun(id: string, changes: Partial<PipelineRun>): PipelineRun | null {

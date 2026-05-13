@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPipelineRun, updatePipelineRun, addContentPiece, listContentPieces } from '@/lib/db';
 import type { PipelineStage } from '@/lib/types';
 
-const STAGE_ORDER: PipelineStage[] = ['research', 'script', 'visual', 'publish'];
+const STAGE_ORDER: PipelineStage[] = ['research', 'script', 'visual', 'video', 'publish'];
 
 // 根据阶段和主题自动生成内容
 function generateStageContent(stage: PipelineStage, topic: string, existingPieces: any[]): string {
@@ -42,6 +42,17 @@ function generateStageContent(stage: PipelineStage, topic: string, existingPiece
 <li><strong>Banner</strong>: 适合公众号横幅展示</li>
 </ul>
 <p><em>Visual 阶段由 Pixel Agent 自动生成配图方案。</em></p>`;
+
+    case 'video':
+      return `<h3>🎬 Video 视频准备</h3>
+<p>为"${topic}"准备小红书 9:16 视频内容：</p>
+<ul>
+<li><strong>封面标题</strong>: ${topic}</li>
+<li><strong>章节化文案</strong>: 将原文案改编为 3 个章节</li>
+<li><strong>数据亮点</strong>: 提炼 3 个核心数据</li>
+<li><strong>渲染</strong>: HyperFrames 生成 1080×1920 MP4</li>
+</ul>
+<p><em>Video 阶段将原文案改编为适合视频展示的形式，通过 HyperFrames 渲染输出。</em></p>`;
 
     case 'publish':
       // publish 阶段使用 script 的内容（即最终发布内容）

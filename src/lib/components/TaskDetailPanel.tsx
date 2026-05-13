@@ -40,10 +40,19 @@ export function TaskDetailPanel({ allTasks }: { allTasks: Task[] }) {
     if (!confirm('Delete this task?')) return;
     setDeleting(true);
     try {
-      await fetch(`/api/stories?id=${task.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/stories/${task.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert('❌ Delete failed: ' + (data.error || res.statusText || 'unknown'));
+        setDeleting(false);
+        return;
+      }
       setTask(null);
-    } catch {}
-    setDeleting(false);
+    } catch (e: any) {
+      alert('❌ Delete failed: ' + e.message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleExecute = async () => {

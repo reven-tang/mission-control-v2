@@ -49,8 +49,13 @@ export class SystemService {
 
   private getDiskUsage(): number {
     try {
-      const out = execSync(`df "${process.cwd()}" | tail -1`).toString();
-      const parts = out.trim().split(/\s+/);
+      // Use spawnSync with args array to avoid shell injection
+      const { spawnSync } = require('child_process');
+      const res = spawnSync('df', [process.cwd()], { encoding: 'utf-8', timeout: 5000 });
+      if (res.error) throw res.error;
+      const lines = res.stdout.trim().split('\n');
+      const dataLine = lines[lines.length - 1];
+      const parts = dataLine.split(/\s+/);
       return parseInt(parts[4]) || 0;
     } catch { return 0; }
   }

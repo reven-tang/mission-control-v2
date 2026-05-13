@@ -1,16 +1,5 @@
 // WeChat Official Account Service
-import fs from 'fs';
-import { join } from 'path';
-
-function loadEnv(): Record<string, string> {
-  const envPath = join(process.cwd(), '.env.local');
-  if (fs.existsSync(envPath)) {
-    return fs.readFileSync(envPath, 'utf-8')
-      .split('\n').filter(l => l && !l.startsWith('#'))
-      .reduce((acc, line) => { const [k, ...v] = line.split('='); acc[k.trim()] = v.join('=').trim(); return acc; }, {} as Record<string, string>);
-  }
-  return {};
-}
+import { loadEnv } from '@/lib/utils/env';
 
 const _env = loadEnv();
 const APP_ID = process.env.WECHAT_APPID || _env.WECHAT_APPID;
@@ -44,7 +33,7 @@ export async function getAccessToken(): Promise<string> {
   }
 
   const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${APP_ID}&secret=${APP_SECRET}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(30000) }); // 30s timeout
   const data: AccessToken & { errcode?: number; errmsg?: string } = await res.json();
 
   if (data.errcode) {

@@ -15,6 +15,33 @@ function loadOpenClawConfig(): any {
   return {};
 }
 
+
+// ====== 从 .env.local 加载环境变量 ======
+function loadEnvFile(): Record<string, string> {
+  const result: Record<string, string> = {};
+  try {
+    const envPath = join(process.cwd(), '.env.local');
+    if (fs.existsSync(envPath)) {
+      for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
+        const m = line.match(/^([A-Z_]+)=(.+)/);
+        if (m) result[m[1]] = m[2];
+      }
+    }
+  } catch { /* ignore */ }
+  return result;
+}
+
+// Fallback: SDJ <-> SJZ 变量名兼容
+function getEnv(key: string): string {
+  if (process.env[key]) return process.env[key];
+  const local = loadEnvFile();
+  if (local[key]) return local[key];
+  const alt = key.replace('SDJ_', 'SJZ_').replace('SJZ_', 'SDJ_');
+  if (process.env[alt]) return process.env[alt];
+  if (local[alt]) return local[alt];
+  return '';
+}
+
 // ====== Provider 映射（30s 缓存）======
 let _providerCache: ReturnType<typeof buildProviderMap> | null = null;
 let _cacheTime = 0;

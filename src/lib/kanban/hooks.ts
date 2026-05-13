@@ -77,7 +77,7 @@ export function initializeKanban(): void {
       try {
         const result = await decomposeComplexTask(
           task.title,
-          task.description,
+          task.description || '',
           task.tags
         );
         task.children = result.cards;

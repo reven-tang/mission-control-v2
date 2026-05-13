@@ -20,106 +20,166 @@ export interface DecomposeResult {
   originalTask: string;
 }
 
-// 通过 OpenClaw 配置的模型调用（魔塔社区）
+// ====== LLM 配置（与 llm-content.ts 一致）======
+import fs from 'fs';
+import os from 'os';
+import { join } from 'path';
+
+function loadOpenClawConfig(): any {
+  try {
+    const configPath = join(os.homedir(), '.openclaw', 'openclaw.json');
+    if (fs.existsSync(configPath)) return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch { /* ignore */ }
+  return {};
+}
+
+function resolveModelConfig(model: string): { baseUrl: string; apiKey: string; provider: string } | null {
+  const config = loadOpenClawConfig();
+  const providers = config?.models?.providers || {};
+
+  // 精确匹配
+  for (const [name, p] of Object.entries(providers)) {
+    const prov = p as any;
+    if (!prov?.models) continue;
+    for (const m of prov.models) {
+      if (m.id === model) {
+        let apiKey = prov.apiKey || '';
+        if (apiKey.startsWith('${') && apiKey.endsWith('}')) {
+          const envVar = apiKey.slice(2, -1);
+          apiKey = process.env[envVar] || '';
+        }
+        return { baseUrl: (prov.baseUrl || 'https://api-inference.modelscope.cn/v1').replace(/\/$/, ''), apiKey, provider: name };
+      }
+    }
+  }
+
+  // 去掉前缀匹配
+  const parts = model.split('/');
+  if (parts.length > 1) {
+    const suffix = parts.slice(1).join('/');
+    for (const [name, p] of Object.entries(providers)) {
+      const prov = p as any;
+      if (!prov?.models) continue;
+      for (const m of prov.models) {
+        if (m.id === suffix) {
+          let apiKey = prov.apiKey || '';
+          if (apiKey.startsWith('${') && apiKey.endsWith('}')) {
+            const envVar = apiKey.slice(2, -1);
+            apiKey = process.env[envVar] || '';
+          }
+          return { baseUrl: (prov.baseUrl || 'https://api-inference.modelscope.cn/v1').replace(/\/$/, ''), apiKey, provider: name };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+const FALLBACK_MODELS = [
+  'moonshotai/Kimi-K2.6',
+  'MiniMax/MiniMax-M2.7',
+  'ZhipuAI/GLM-5.1',
+  'deepseek-ai/DeepSeek-V4-Pro',
+];
+
+// ====== 通过 OpenClaw 配置调用 LLM ======
 async function callLLM(prompt: string, schema?: object): Promise<string> {
-  // 复用 OpenClaw 全局配置 — 无需独立配置
-  const apiKey = process.env.MODELSCOPE_API_KEY;
-  const model = process.env.OPENCLAW_DEFAULT_MODEL || 'deepseek-ai/DeepSeek-V4-Pro';
-  
-  if (!apiKey) throw new Error('MODELSCOPE_API_KEY not configured in OpenClaw env');
-  
-  const res = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: '你是一个任务规划专家。严格按照用户要求的JSON格式输出，不使用markdown包裹。' },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: 2000,
-      temperature: 0.7
-    }),
-    signal: AbortSignal.timeout(30000)
-  });
+  for (const model of FALLBACK_MODELS) {
+    const prov = resolveModelConfig(model);
+    if (!prov) continue;
 
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  
-  let content = data.choices?.[0]?.message?.content || '';
-  // 清理 markdown 围栏
-  content = content.replace(/```json/g, '').replace(/```/g, '').trim();
-  return content;
-}
+    const modelId = model.split('/').pop() || model;
+    if (!prov.apiKey) { console.warn(`[TaskDecomposer] ${prov.provider}: no apiKey, skipping`); continue; }
 
-// 严格 JSON 解析（含修复）
-function strictJSONParse(str: string): any {
-  try {
-    return JSON.parse(str);
-  } catch {
-    // 尝试修复常见问题：单引号 → 双引号，无引号 key → 加引号
-    const fixed = str
-      .replace(/'/g, '"')
-      .replace(/(\b\w+\b)(?=\s*:)/g, '"$1"')
-      .replace(/,\s*}/g, '}')
-      .replace(/,\s*]/g, ']');
     try {
-      return JSON.parse(fixed);
-    } catch {
-      throw new Error('JSON 解析失败: ' + str.slice(0, 100));
+      console.log(`[TaskDecomposer] ${prov.provider} | ${modelId}`);
+      const body: any = {
+        model: modelId,
+        messages: [
+          { role: 'system', content: '你是一个任务规划专家。严格按照用户要求的JSON格式输出，不使用markdown包裹。' },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 4000,
+        temperature: 0.3,
+      };
+
+      const res = await fetch(`${prov.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${prov.apiKey}` },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60000),
+      });
+
+      const data = await res.json() as any;
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+      const content = data.choices?.[0]?.message?.content || '';
+      if (content.length < 20) throw new Error('Response too short');
+
+      return content.trim();
+    } catch (e: any) {
+      console.warn(`[TaskDecomposer] ${model} failed: ${e.message}`);
     }
   }
+  throw new Error('All LLM providers failed for task decomposition');
 }
 
-/**
- * 分解复杂任务为子任务
- * @param taskTitle 任务标题
- * @param taskDescription 任务描述（可选）
- * @param tags 任务标签（用于推断能力域）
- * @returns 子任务列表
- */
-export async function decomposeComplexTask(
-  taskTitle: string,
-  taskDescription?: string,
-  tags?: string[]
-): Promise<DecomposeResult> {
-  // 推断能力域
-  const domains = tags ? getDomainsForTags(tags) : [];
-  const domainHint = domains.length > 0 ? `（关联能力域：${domains.join(', ')}）` : '';
-  
-  const prompt = `将任务"${taskTitle}"${taskDescription ? `（描述：${taskDescription}）` : ''}${domainHint}分解为最多5个可独立执行的子任务。
-输出JSON数组，每个元素包含：title（任务标题）, description（任务描述）, domain（能力域：research|script|visual|video|publish）, dependsOn（依赖的其他任务标题数组）, estimatedMinutes（预计分钟数）。
-只输出JSON数组，不要解释。`;
-
-  try {
-    const raw = await callLLM(prompt);
-    const cards: SubTask[] = strictJSONParse(raw);
-    
-    // 校验
-    if (!Array.isArray(cards) || cards.length === 0) {
-      return { cards: [{ title: taskTitle, description: taskDescription || '', domain: 'research', dependsOn: [], estimatedMinutes: 60 }], originalTask: taskTitle };
-    }
-    
-    return { cards: cards.slice(0, 5), originalTask: taskTitle };
-  } catch (e) {
-    // 降级：返回原始任务作为单卡片
-    console.warn('[TaskDecomposer] LLM 分解失败，降级为单任务:', (e as Error).message);
-    return {
-      cards: [{ title: taskTitle, description: taskDescription || '', domain: domains[0] || 'research', dependsOn: [], estimatedMinutes: 60 }],
-      originalTask: taskTitle
-    };
-  }
-}
-
-/**
- * 判断任务是否需要分解（复杂度评估）
- */
+// ====== 复杂任务判断 ======
 export function needsDecomposition(tags: string[], complexity?: number): boolean {
-  // 复杂度 >= 3 或包含复合标签
+  if (tags?.includes('复合任务') || tags?.includes('complex-task')) return true;
   if (complexity && complexity >= 3) return true;
-  const complexTags = ['复合任务', '多阶段', '全流程', '自动', '复杂'];
-  return tags.some(tag => complexTags.includes(tag));
+  return false;
+}
+
+// ====== 任务分解 ======
+export async function decomposeComplexTask(
+  title: string,
+  description: string,
+  tags: string[]
+): Promise<DecomposeResult> {
+  // 提取相关能力域
+  const domains = getDomainsForTags(tags);
+  const domainList = domains.length > 0 ? domains.join('、') : '通用';
+
+  const prompt = `将以下任务拆解为 3-5 个可独立执行的子任务卡片，每个子任务需明确：
+1. title: 子任务标题（简洁）
+2. description: 详细描述
+3. domain: 能力域（从以下选择：${Object.values(CAPABILITY_DOMAIN_MAP).join('、')}）
+4. dependsOn: 依赖的子任务标题数组（无依赖则为空数组）
+5. estimatedMinutes: 预计耗时（分钟）
+
+原始任务：${title}
+描述：${description || '无'}
+相关领域：${domainList}
+
+输出严格 JSON 格式，不要 markdown 包裹：
+{"cards":[{"title":"...","description":"...","domain":"research","dependsOn":[],"estimatedMinutes":30}]}`;
+
+  const raw = await callLLM(prompt);
+
+  // 解析 JSON
+  try {
+    const cleaned = raw.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    const parsed = JSON.parse(cleaned) as DecomposeResult;
+    if (Array.isArray(parsed.cards) && parsed.cards.length > 0) {
+      console.log(`[TaskDecomposer] Decomposed "${title}" → ${parsed.cards.length} sub-tasks`);
+      return parsed;
+    }
+    console.warn('[TaskDecomposer] Invalid format, using fallback');
+  } catch (e) {
+    console.warn('[TaskDecomposer] JSON parse failed, using fallback:', (e as Error).message);
+  }
+
+  // Fallback: 单子任务
+  return {
+    cards: [{
+      title: `执行：${title}`,
+      description: description || title,
+      domain: domains[0] || 'research',
+      dependsOn: [],
+      estimatedMinutes: 60,
+    }],
+    originalTask: title,
+  };
 }

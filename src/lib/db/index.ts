@@ -42,6 +42,7 @@ function load(): StoreSchema {
 }
 
 // Synchronized save to prevent concurrent writes
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function saveAsync(): Promise<void> {
   if (!store) return;
   const prev = writeLock;

@@ -198,7 +198,7 @@ async function callLLM(model: string, systemPrompt: string, userPrompt: string, 
       const data = await res.json() as any;
       if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
 
-      let content = data.choices?.[0]?.message?.content || '';
+      const content = data.choices?.[0]?.message?.content || '';
       if (content.length < 50) throw new Error('LLM content too short');
 
       const cnChars = (content.match(/[\u4e00-\u9fa5]/g) || []).length;
@@ -251,9 +251,7 @@ export async function humanizeArticle(rawHtml: string): Promise<string> {
   for (const model of MODEL_FALLBACKS) {
     try {
       return await callLLM(model, HUMANIZER_PROMPT, `润色以下文章：\n\n${rawHtml}`);
-    } catch (e: any) {
-      console.log(`[Humanizer] ${model} failed`);
-    }
+    } catch { /* ignore error, try next model */ }
   }
   return rawHtml;
 }

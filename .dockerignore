@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Build outputs
+.next
+out
+coverage
+*.tsbuildinfo
+
+# Development files
+.git
+.gitignore
+.env.local
+.env.*.local
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Test files
+tests/
+jest.config.js
+tsconfig.jest.json
+
+# CI/CD
+.github
+Dockerfile
+.dockerignore
+
+# Misc
+*.log
+*.lock
+tmp
+temp

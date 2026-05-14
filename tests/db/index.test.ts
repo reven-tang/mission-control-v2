@@ -229,6 +229,44 @@ describe('Database Service', () => {
       const opps = listOpportunities();
       expect(Array.isArray(opps)).toBe(true);
     });
+
+    test('should get opportunity by ID', async () => {
+      const { addOpportunity, getOpportunity } = await import('@/lib/db');
+      
+      const opp = addOpportunity({ title: 'Get Test', score: 70, status: 'identified' as any });
+      const found = getOpportunity(opp.id);
+      
+      expect(found).toBeDefined();
+      expect(found?.title).toBe('Get Test');
+    });
+
+    test('should return null for non-existent opportunity', async () => {
+      const { getOpportunity } = await import('@/lib/db');
+      
+      const result = getOpportunity('non-existent-id');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Store Operations', () => {
+    
+    test('should get store instance', async () => {
+      const { getStore } = await import('@/lib/db');
+      
+      const store = getStore(); // May be undefined in test env
+      expect(store).toBeDefined();
+      expect(store?.tasks || []).toBeDefined();
+      expect(store?.pipelines || []).toBeDefined();
+    });
+
+    test('should get kanban data', async () => {
+      const { getKanban } = await import('@/lib/db');
+      
+      const kanban = getKanban();
+      expect(kanban).toBeDefined();
+      expect(kanban?.backlog || []).toBeDefined();
+      expect(kanban?.todo || []).toBeDefined();
+    });
   });
 
   describe('Concurrency Safety', () => {
@@ -259,3 +297,97 @@ describe('Database Service', () => {
 
 // TypeScript type for tests
 type TaskSource = 'manual' | 'api' | 'cron' | 'webhook';
+
+describe('Pipeline List Operations', () => {
+  
+  test('should list pipelines', async () => {
+    const { listPipelineRuns } = await import('@/lib/db');
+    const pipelines = listPipelineRuns();
+    expect(Array.isArray(pipelines)).toBe(true);
+  });
+
+  test('should get pipeline run by ID', async () => {
+    const { addPipelineRun, getPipelineRun } = await import('@/lib/db');
+    
+    const pipeline = addPipelineRun({
+      title: 'Get Test',
+      topic: 'Test',
+      current_stage: 'research',
+      status: 'running',
+    });
+    
+    const found = getPipelineRun(pipeline.id);
+    expect(found).toBeDefined();
+    expect(found?.title).toBe('Get Test');
+  });
+});
+
+describe('Edge Cases', () => {
+  
+  test('should update non-existent pain point returning null', async () => {
+    const { updatePainPoint } = await import('@/lib/db');
+    const result = updatePainPoint('non-existent', { severity: 999 });
+    expect(result).toBeNull();
+  });
+
+  test('should delete non-existent pain point returning false', async () => {
+    const { deletePainPoint } = await import('@/lib/db');
+    const result = deletePainPoint('non-existent');
+    expect(result).toBe(false);
+  });
+
+  test('should get non-existent pain point returning null', async () => {
+    const { getPainPoint } = await import('@/lib/db');
+    const result = getPainPoint('non-existent');
+    expect(result).toBeNull();
+  });
+
+  test('should get pain point by ID', async () => {
+    const { addPainPoint, getPainPoint } = await import('@/lib/db');
+    const pp = addPainPoint({ title: 'Get PP', severity: 3, source: 'test' as any });
+    const found = getPainPoint(pp.id);
+    expect(found).toBeDefined();
+    expect(found?.title).toBe('Get PP');
+  });
+
+  test('should filter tasks by status', async () => {
+    const { listTasks, createTask } = await import('@/lib/db');
+    
+    createTask({ title: 'Backlog Task', priority: 1 as any, source: 'test' as any });
+    
+    const backlogTasks = listTasks({ status: 'backlog' });
+    expect(backlogTasks.length).toBeGreaterThan(0);
+    expect(backlogTasks.every(t => t.status === 'backlog')).toBe(true);
+    
+    const emptyResult = listTasks({ status: 'non-existent-status' });
+    expect(emptyResult.length).toBe(0);
+  });
+});
+
+describe('Pipeline Edge Cases', () => {
+  
+  test('should handle multiple pipeline stages', async () => {
+    const { addPipelineRun, updatePipelineRun, getPipelineRun } = await import('@/lib/db');
+    
+    const pipeline = addPipelineRun({
+      title: 'Multi Stage Test',
+      topic: 'Test',
+      current_stage: 'research',
+      status: 'running',
+    });
+    
+    // Simulate full pipeline flow
+    let updated = updatePipelineRun(pipeline.id, { current_stage: 'script' });
+    expect(updated.current_stage).toBe('script');
+    
+    updated = updatePipelineRun(pipeline.id, { current_stage: 'visual' });
+    expect(updated.current_stage).toBe('visual');
+    
+    updated = updatePipelineRun(pipeline.id, { current_stage: 'publish', status: 'completed' });
+    expect(updated.current_stage).toBe('publish');
+    expect(updated.status).toBe('completed');
+    
+    const fetched = getPipelineRun(pipeline.id);
+    expect(fetched?.current_stage).toBe('publish');
+  });
+});

@@ -62,4 +62,14 @@ describe('LLM Content Service', () => {
       expect(true).toBe(true); // Placeholder
     });
   });
+
+  describe('Provider Map Diagnostic Functions', () => {
+    
+    test('loadOpenClawConfig should return object', () => {
+      const { loadOpenClawConfig } = require('@/lib/services/llm-content');
+      
+      const config = loadOpenClawConfig();
+      expect(typeof config).toBe('object');
+    });
+  });
 });

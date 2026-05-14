@@ -130,6 +130,105 @@ describe('Database Service', () => {
       expect(updated.current_stage).toBe('script');
       expect(updated.status).toBe('completed');
     });
+
+    test('should delete an existing task', async () => {
+      const { createTask, deleteTask, listTasks } = await import('@/lib/db');
+      
+      const task = createTask({ title: 'To Delete', priority: 1 as any, source: 'test' as any });
+      const tasksBefore = listTasks().length;
+      
+      const result = deleteTask(task.id);
+      
+      expect(result).toBe(true);
+      expect(listTasks().length).toBe(tasksBefore - 1);
+    });
+
+    test('should return false when deleting non-existent task', async () => {
+      const { deleteTask } = await import('@/lib/db');
+      
+      const result = deleteTask('non-existent-id');
+      
+      expect(result).toBe(false);
+    });
+
+    test('should get task by ID', async () => {
+      const { createTask, getTask } = await import('@/lib/db');
+      
+      const task = createTask({ title: 'Get Test', priority: 2 as any, source: 'test' as any });
+      const found = getTask(task.id);
+      
+      expect(found).toBeDefined();
+      expect(found?.title).toBe('Get Test');
+    });
+
+    test('should return null for non-existent task ID', async () => {
+      const { getTask } = await import('@/lib/db');
+      
+      const result = getTask('non-existent-id');
+      
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Pain Points Operations', () => {
+    
+    test('should create a new pain point', async () => {
+      const { addPainPoint, listPainPoints } = await import('@/lib/db');
+      
+      const before = listPainPoints().length;
+      const pp = addPainPoint({ title: 'Test Pain', severity: 3, source: 'test' as any });
+      
+      expect(pp.id).toMatch(/^pp_/);
+      expect(listPainPoints().length).toBe(before + 1);
+    });
+
+    test('should list pain points', async () => {
+      const { listPainPoints } = await import('@/lib/db');
+      
+      const points = listPainPoints();
+      expect(Array.isArray(points)).toBe(true);
+    });
+
+    test('should update a pain point', async () => {
+      const { addPainPoint, updatePainPoint } = await import('@/lib/db');
+      
+      const pp = addPainPoint({ title: 'Original', severity: 1, source: 'test' as any });
+      const updated = updatePainPoint(pp.id, { severity: 5 });
+      
+      expect(updated?.severity).toBe(5);
+    });
+
+    test('should delete a pain point', async () => {
+      const { addPainPoint, deletePainPoint, listPainPoints } = await import('@/lib/db');
+      
+      const pp = addPainPoint({ title: 'To Delete', severity: 2, source: 'test' as any });
+      const before = listPainPoints().length;
+      
+      const result = deletePainPoint(pp.id);
+      
+      expect(result).toBe(true);
+      expect(listPainPoints().length).toBe(before - 1);
+    });
+  });
+
+  describe('Opportunities Operations', () => {
+    
+    test('should create a new opportunity', async () => {
+      const { addOpportunity, listOpportunities } = await import('@/lib/db');
+      
+      const before = listOpportunities().length;
+      const opp = addOpportunity({ title: 'Test Opportunity', score: 85, status: 'identified' as any });
+      
+      expect(opp.id).toMatch(/^opp_/);
+      expect(listOpportunities().length).toBe(before + 1);
+    });
+
+    test('should list opportunities', async () => {
+      const { listOpportunities } = await import('@/lib/db');
+      
+      const opps = listOpportunities();
+      expect(Array.isArray(opps)).toBe(true);
+    });
   });
 
   describe('Concurrency Safety', () => {
